@@ -48,19 +48,25 @@ class SystolicArraySim:
                     cycle += 1
                 
                 # Reconstruct the input partition (Instead of input FIFO)
-                input_partition = self.reconstruct_input(self.activation_matrix[N_col * self.mac_size : (N_col + 1) * self.mac_size])
+                input_stream = self.reconstruct_input(self.activation_matrix[N_row * self.mac_size : (N_row + 1) * self.mac_size])
                 
                 # Implement matrix multiplication and produce output
-                # for i in range(self.mac_size):
-                #     for j in range(i):
-                #         for k in range(i):
-                #             psum_stream[j][k + 1] = mac_register[j][k] * input_partition[j][k]
+                for i in range(self.n):
+                    for j in range(self.mac_size):
+                        
+                        if input_stream[i][j] is None:
+                            break
+                        
+                        cycle += 1
                 
-                # print(psum_stream)
+                for i in range(self.n, self.n + self.mac_size - 1):
+                    for j in range(self.mac_size):
+                        
+                        if input_stream[i][j] is None:
+                            continue
+                        
+                        cycle += 1
                 
-                for i in range(self.n + self.mac_size - 1):
-                    
-                    cycle += 1
                 
                 for i in range(self.mac_size):
                     
@@ -74,15 +80,14 @@ class SystolicArraySim:
 
     def reconstruct_input(self, input_array):
         rows, cols = input_array.shape
-        new_rows = max(rows, self.mac_size)
-        # input_partition = np.zeros((rows + cols - 1, rows), dtype=input_array.dtype)
-        input_partition = np.zeros((new_rows + cols - 1, new_rows))
+        input_stream = np.full((cols + self.mac_size - 1, self.mac_size), None, dtype='float64')
         
         for i in range(rows):
             for j in range(cols):
-                input_partition[i + j][i] = input_array[i][j]
+                k = self.mac_size - i - 1
+                input_stream[j + k][k] = input_array[i][j]
         
-        return input_partition
+        return input_stream
     
     def compute_utilization(self, mac_register):
         
