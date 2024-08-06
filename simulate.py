@@ -6,6 +6,7 @@ class SystolicArraySim:
         self.weight_matrix = weight_matrix
         self.activation_matrix = activation_matrix
         self.mac_size = mac_size
+        
         self.m, self.k = weight_matrix.shape
         _, self.n = activation_matrix.shape
     
@@ -14,43 +15,48 @@ class SystolicArraySim:
         
         output_matrix = np.zeros((self.m, self.n))
         
-        mac_array = np.zeros((self.mac_size, self.mac_size))
         mac_register = np.zeros((self.mac_size, self.mac_size))
+        psum_stream = np.zeros((self.mac_size, self.mac_size))
+        pe_in_compute = np.zeros((self.mac_size, self.mac_size))
         
-        # Number of iterations
-        N_row = math.ceil(self.m / self.mac_size)
-        N_col = math.ceil(self.k / self.mac_size)
+        # Number of iterations (row, col)
+        num_iter = (math.ceil(self.m / self.mac_size), math.ceil(self.k / self.mac_size))
         
-        for mac_col in range(N_col):
-            for mac_row in range(N_row):
+        for N_col in range(num_iter[1]):
+            for N_row in range(num_iter[0]):
                 
-                # Fill the MAC array with weight values (128 x 128)
+                # 1. Fill the MAC array with weight values (128 x 128)
                 for i in range(self.mac_size):
                     # Transfer weight values to adjacent units
-                    for j in range(0, self.mac_size - 1):
-                        mac_array[j] = mac_array[j + 1]
-                    tgt_row = mac_row * self.mac_size + i
-                    tgt_col = mac_col * self.mac_size
-                    if tgt_row >= self.m:
-                        mac_array[self.mac_size - 1] = np.zeros(self.mac_size)
-                    elif tgt_col + self.mac_size > self.k:
-                        stream_weights = self.weight_matrix[tgt_row][tgt_col : tgt_col + self.mac_size]
-                        mac_array[self.mac_size - 1] = np.pad(stream_weights, (0, self.mac_size - len(stream_weights)), mode='constant', constant_values=0)
+                    for j in reversed(range(1, self.mac_size)):
+                        mac_register[j] = mac_register[j - 1]
+                    
+                    new_row = N_row * self.mac_size
+                    new_col = N_col * self.mac_size + i
+                    
+                    if new_col >= self.k:
+                        mac_register[0] = np.zeros(self.mac_size)
+                    elif new_row + self.mac_size > self.m:
+                        new_weights = self.weight_matrix[new_row:, new_col]
+                        mac_register[0] = np.pad(new_weights,
+                                                 (0, self.mac_size - len(new_weights)),
+                                                 mode='constant',
+                                                 constant_values=0)
                     else:
-                        mac_array[self.mac_size - 1] = self.weight_matrix[tgt_row][tgt_col : tgt_col + self.mac_size]
+                        mac_register[0] = self.weight_matrix[new_row : new_row + self.mac_size, new_col]
                     
                     cycle += 1
                 
                 # Reconstruct the input partition (Instead of input FIFO)
-                input_partition = self.reconstruct_input(self.activation_matrix[mac_col * self.mac_size : (mac_col + 1) * self.mac_size])
+                input_partition = self.reconstruct_input(self.activation_matrix[N_col * self.mac_size : (N_col + 1) * self.mac_size])
                 
                 # Implement matrix multiplication and produce output
                 # for i in range(self.mac_size):
                 #     for j in range(i):
                 #         for k in range(i):
-                #             mac_register[j][k + 1] = mac_array[j][k] * input_partition[j][k]
+                #             psum_stream[j][k + 1] = mac_register[j][k] * input_partition[j][k]
                 
-                # print(mac_register)
+                # print(psum_stream)
                 
                 for i in range(self.n + self.mac_size - 1):
                     
@@ -61,10 +67,10 @@ class SystolicArraySim:
                     cycle += 1
                 
                 # Reset the MAC array and register
-                mac_array = np.zeros((self.mac_size, self.mac_size))
                 mac_register = np.zeros((self.mac_size, self.mac_size))
+                psum_stream = np.zeros((self.mac_size, self.mac_size))
         
-        return cycle
+        return output_matrix, cycle
 
     def reconstruct_input(self, input_array):
         rows, cols = input_array.shape
@@ -77,6 +83,10 @@ class SystolicArraySim:
                 input_partition[i + j][i] = input_array[i][j]
         
         return input_partition
+    
+    def compute_utilization(self, mac_register):
+        
+        return
 
 
 if __name__ == "__main__":

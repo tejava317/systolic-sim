@@ -31,7 +31,7 @@ class SystolicArrayTest:
             
             simulator = SystolicArraySim(weight_matrix, activation_matrix, self.mac_size)
             
-            cycle = simulator.run_simulate(i)
+            simulate_output, cycle = simulator.run_simulate(i)
 
             print(f"Cycles for computation : {cycle} cycles\n")
         
