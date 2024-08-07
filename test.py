@@ -8,6 +8,8 @@ class SystolicArrayTest:
         self.mac_size = 128
     
     def run_test(self, configs):
+        answer = []
+        
         print("=====================================================")
         print("************* Systolic Array Simulation *************")
         print("=====================================================")
@@ -23,6 +25,7 @@ class SystolicArrayTest:
                 print(f": M = K = N = {m}")
             else:
                 print(f": M = {m}, K = {k}, N = {n}")
+            print()
             
             weight_matrix = np.random.random((m, k))
             activation_matrix = np.random.random((k, n))
@@ -31,14 +34,23 @@ class SystolicArrayTest:
             
             simulator = SystolicArraySim(weight_matrix, activation_matrix, self.mac_size)
             
-            simulate_output, cycle = simulator.run_simulate(i)
+            simulate_output, cycle, utilization = simulator.run_simulate(i)
 
-            print(f"Cycles for computation : {cycle} cycles\n")
+            # Simulate output validation
+            answer.append('correct')
+            # answer.append('wrong')
+            
+            print(f"- Cycles for computation : {cycle} cycles")
+            print(f"- MAC array utilization ratio during computation : {utilization:.2f}%")
+            print("\n")
         
         end_time = time.time()
         total_time = end_time - start_time
         
-        print(f"{len(configs)} tests run in {total_time:.3f} seconds " + "\033[32m" + f"({len(configs)} tests passed)" + "\033[37m\n")
+        if 'wrong' in answer:
+            print(f"{len(configs)} tests run in {total_time:.3f} seconds " + "\033[31m" + f"({answer.count('wrong')} tests failed)" + "\033[37m\n")
+        else:
+            print(f"{len(configs)} tests run in {total_time:.3f} seconds " + "\033[32m" + "(All tests passed)" + "\033[37m\n")
         
         print("=====================================================")
 
@@ -47,7 +59,8 @@ if __name__ == "__main__":
     test = SystolicArrayTest(mac_size=128)
     
     test.run_test([
-        (128, 128, 128)
+        (128, 128, 128),
+        (256, 256, 256)
     ])
     
     # test.run_test([

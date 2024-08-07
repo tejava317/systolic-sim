@@ -9,13 +9,16 @@ class SystolicArraySim:
         
         self.m, self.k = weight_matrix.shape
         _, self.n = activation_matrix.shape
+        
+        self.cycle = 0
+        self.utilization = 0
     
     def run_simulate(self, i):
-        cycle = 0
-        
         output_matrix = np.zeros((self.m, self.n))
         
         mac_register = np.zeros((self.mac_size, self.mac_size))
+        
+        input_stream = np.zeros((self.mac_size, self.mac_size))
         psum_stream = np.zeros((self.mac_size, self.mac_size))
         pe_in_compute = np.zeros((self.mac_size, self.mac_size))
         
@@ -45,51 +48,87 @@ class SystolicArraySim:
                     else:
                         mac_register[0] = self.weight_matrix[new_row : new_row + self.mac_size, new_col]
                     
-                    cycle += 1
+                    self.compute_cycle_and_utilization(input_stream)
                 
                 # Reconstruct the input partition (Instead of input FIFO)
-                input_stream = self.reconstruct_input(self.activation_matrix[N_row * self.mac_size : (N_row + 1) * self.mac_size])
+                # and prepare the output FIFO
+                input_fifo = self.reconstruct_input(self.activation_matrix[N_row * self.mac_size : (N_row + 1) * self.mac_size])
+                output_fifo = np.zeros(input_fifo.shape)
                 
                 # Implement matrix multiplication and produce output
-                for i in range(self.n):
-                    for j in range(self.mac_size):
+                for i in range(self.mac_size - 1):
+                    
+                    input_stream[:, 1:] = input_stream[:, :-1]
+                    input_stream[:, 0] = input_fifo[i]
+                    
+                    mac_multiply = mac_register * input_stream
+                    mac_accumulate = mac_multiply + psum_stream
+                    psum_stream[1:, :] = mac_accumulate[:-1, :]
+                    psum_stream[0] = 0
                         
-                        if input_stream[i][j] is None:
-                            break
-                        
-                        cycle += 1
+                    self.compute_cycle_and_utilization(input_stream)
                 
-                for i in range(self.n, self.n + self.mac_size - 1):
-                    for j in range(self.mac_size):
-                        
-                        if input_stream[i][j] is None:
-                            continue
-                        
-                        cycle += 1
-                
+                for i in range(self.mac_size - 1, self.n + self.mac_size - 1):
+                    k = i - self.mac_size + 1
+                    
+                    input_stream[:, 1:] = input_stream[:, :-1]
+                    input_stream[:, 0] = input_fifo[i]
+                    
+                    mac_multiply = mac_register * input_stream
+                    mac_accumulate = mac_multiply + psum_stream
+                    psum_stream[1:, :] = mac_accumulate[:-1, :]
+                    psum_stream[0] = 0
+                    
+                    output_fifo[k] = mac_accumulate[-1]
+                    
+                    self.compute_cycle_and_utilization(input_stream)
                 
                 for i in range(self.mac_size):
                     
-                    cycle += 1
+                    input_stream[:, 1:] = input_stream[:, :-1]
+                    input_stream[:, 0] = 0
+                    
+                    mac_multiply = mac_register * input_stream
+                    mac_accumulate = mac_multiply + psum_stream
+                    psum_stream[1:, :] = mac_accumulate[:-1, :]
+                    psum_stream[0] = 0
+                    
+                    output_fifo[k] = mac_accumulate[-1]
+                    
+                    self.compute_cycle_and_utilization(input_stream)
+                
+                # Reconstruct the output FIFO into output matrix
+                output_computation_result = self.reconstruct_output(output_fifo)
+                output_matrix[N_row * self.mac_size : (N_row + 1) * self.mac_size] += output_computation_result
                 
                 # Reset the MAC array and register
                 mac_register = np.zeros((self.mac_size, self.mac_size))
+                
+                input_stream = np.zeros((self.mac_size, self.mac_size))
                 psum_stream = np.zeros((self.mac_size, self.mac_size))
+                pe_in_compute = np.zeros((self.mac_size, self.mac_size))
         
-        return output_matrix, cycle
+        return output_matrix, self.cycle, self.utilization / self.cycle
 
     def reconstruct_input(self, input_array):
         rows, cols = input_array.shape
-        input_stream = np.full((cols + self.mac_size - 1, self.mac_size), None, dtype='float64')
+        reconstructed_input = np.zeros((cols + self.mac_size - 1, self.mac_size))
         
         for i in range(rows):
             for j in range(cols):
                 k = self.mac_size - i - 1
-                input_stream[j + k][k] = input_array[i][j]
+                reconstructed_input[j + k][k] = input_array[i][j]
         
-        return input_stream
+        return reconstructed_input
     
-    def compute_utilization(self, mac_register):
+    def reconstruct_output(self, output_array):
+        reconstructed_output = np.zeros((self.mac_size, self.n))
+        
+        return reconstructed_output
+    
+    def compute_cycle_and_utilization(self, input_stream):
+        self.cycle += 1
+        self.utilization += np.count_nonzero(input_stream) / (self.mac_size * self.mac_size)
         
         return
 
