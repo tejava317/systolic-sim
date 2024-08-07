@@ -41,7 +41,7 @@ class SystolicArrayTest:
             # answer.append('wrong')
             
             print(f"- Cycles for computation : {cycle} cycles")
-            print(f"- MAC array utilization ratio during computation : {utilization:.2f}%")
+            print(f"- MAC array utilization ratio during computation : {utilization * 100:0.2f}%")
             print("\n")
         
         end_time = time.time()
@@ -58,14 +58,14 @@ class SystolicArrayTest:
 if __name__ == "__main__":
     test = SystolicArrayTest(mac_size=128)
     
-    test.run_test([
-        (128, 128, 128),
-        (256, 256, 256)
-    ])
-    
     # test.run_test([
     #     (128, 128, 128),
-    #     (256, 256, 256),
-    #     (200, 128, 128),
-    #     (128, 200, 200),
+    #     (256, 256, 256)
     # ])
+    
+    test.run_test([
+        (128, 128, 128),
+        (256, 256, 256),
+        (200, 128, 128),
+        (128, 200, 200),
+    ])
