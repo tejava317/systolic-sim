@@ -98,8 +98,11 @@ class SystolicArraySim:
                     self.compute_cycle_and_utilization(input_stream)
                 
                 # Reconstruct the output FIFO into output matrix
-                output_computation_result = self.reconstruct_output(output_fifo)
-                output_matrix[N_row * self.mac_size : (N_row + 1) * self.mac_size] += output_computation_result
+                output_computation_result = self.reconstruct_output(N_row, output_fifo)
+                if (N_row + 1) * self.mac_size > self.m:
+                    output_matrix[N_row * self.mac_size : self.m] += output_computation_result
+                else:
+                    output_matrix[N_row * self.mac_size : (N_row + 1) * self.mac_size] += output_computation_result
                 
                 # Reset the MAC array and register
                 mac_register = np.zeros((self.mac_size, self.mac_size))
@@ -121,8 +124,11 @@ class SystolicArraySim:
         
         return reconstructed_input
     
-    def reconstruct_output(self, output_array):
-        reconstructed_output = np.zeros((self.mac_size, self.n))
+    def reconstruct_output(self, N_row, output_array):
+        if (N_row + 1) * self.mac_size > self.m:
+            reconstructed_output = np.zeros((self.m - (N_row * self.mac_size), self.n))
+        else:
+            reconstructed_output = np.zeros((self.mac_size, self.n))
         
         return reconstructed_output
     
