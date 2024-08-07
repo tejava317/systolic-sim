@@ -10,9 +10,16 @@ class SystolicArrayTest:
     def run_test(self, configs):
         answer = []
         
-        print("=====================================================")
-        print("************* Systolic Array Simulation *************")
-        print("=====================================================")
+        print("=========================================================")
+        print("*************** Systolic Array Simulation ***************")
+        print("=========================================================")
+        print()
+        print(": Matrix-Matrix Multiplication Implementation")
+        print()
+        print("1) Weight Matrix : M x K")
+        print("2) Activation Matrix : K x N")
+        print()
+        print("---------------------------------------------------------")
         print()
         
         start_time = time.time()
@@ -40,13 +47,14 @@ class SystolicArrayTest:
             answer.append('correct')
             # answer.append('wrong')
             
-            print(f"- Cycles for computation : {cycle} cycles")
+            print(f"- Cycles for multiplication : {cycle} cycles")
             print(f"- MAC array utilization ratio during computation : {utilization * 100:0.2f}%")
-            print("\n")
+            print()
         
         end_time = time.time()
         total_time = end_time - start_time
         
+        print()
         if 'wrong' in answer:
             print(f"{len(configs)} tests run in {total_time:.3f} seconds " + "\033[31m" + f"({answer.count('wrong')} tests failed)" + "\033[37m\n")
         else:
